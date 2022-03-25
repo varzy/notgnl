@@ -2,20 +2,20 @@ require('dotenv').config();
 process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
 
 const { Command } = require('commander');
-const { getRegularToday } = require('../utils/helpers');
 const { Channel } = require('../core/Channel');
 const { Newsletter } = require('../core/Newsletter');
 
 const program = new Command();
-const channel = new Channel();
-const newsletter = new Newsletter();
+const channel = new Channel('CLI');
+const newsletter = new Newsletter('CLI');
 
 /**
  * 设计命令行
  */
 program
   .option('-p, --page-id <PageId>', 'Publishing pageId.')
-  .option('-d, --day <Day>', 'The publishing day of notion post.', getRegularToday())
+  .option('--today', `Publish today's first post.`)
+  .option('-d, --day [Day]', 'The publishing day of notion post.')
   .option('--disable-update-status', 'Is auto update post status after published.')
   .option('-n, --newsletter', 'Generate newsletter')
   .option('-sd, --start-day <StartDay>', 'Start Day.')
@@ -28,16 +28,24 @@ program
 const run = async () => {
   const options = program.opts();
 
+  // 根据页面 ID 发布，拥有最高优先级
   if (options.pageId) {
     await channel.sendByPageId(options.pageId, options.disableUpdateStatus);
     return;
   }
 
+  // 发送当天的第一篇
+  if (options.today) {
+    await channel.sendByDay(new Date(), options.disableUpdateStatus);
+  }
+
+  // 按照日期发送
   if (options.day) {
     await channel.sendByDay(options.day, options.disableUpdateStatus);
     return;
   }
 
+  // 生成 Newsletter
   if (options.newsletter) {
     await newsletter.generateNewsletter(options.startDay, options.endDay);
   }
