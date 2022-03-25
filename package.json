@@ -1,0 +1,37 @@
+{
+  "name": "notgnl",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/varzy/notgnl.git",
+  "author": "zy <varzy@live.com>",
+  "license": "MIT",
+  "scripts": {
+    "prettier": "prettier --write '**/*.{js,json}'",
+    "lint": "eslint --fix '**/*.js'",
+    "dev": "nodemon --watch \"src/**\" --ext \"js,json\" --ignore \"src/**/*.spec.ts\" \"src/server.js\"",
+    "serve": "node src/server/index.js",
+    "cli": "node src/cli/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@koa/router": "^10.1.1",
+    "@notionhq/client": "^1.0.3",
+    "axios": "^0.26.1",
+    "commander": "^9.1.0",
+    "commonjs": "^0.0.1",
+    "dayjs": "^1.11.0",
+    "dotenv": "^16.0.0",
+    "koa": "^2.13.4",
+    "koa-bodyparser": "^4.3.0",
+    "lodash": "^4.17.21",
+    "shelljs": "^0.8.5"
+  },
+  "devDependencies": {
+    "eslint": "^8.11.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "jest": "^27.5.1",
+    "nodemon": "^2.0.15",
+    "prettier": "^2.6.0"
+  }
+}
