@@ -6,6 +6,9 @@ const {
 } = require('../config/constants');
 const { NotionClient } = require('./NotionClient');
 const { Echoer } = require('./Echoer');
+// const path = require('path');
+// const fs = require('fs');
+const { ImageHosting } = require('./ImageHosting');
 
 class Newsletter {
   constructor(env) {
@@ -92,6 +95,8 @@ class Newsletter {
     });
     const newsletterGroupsWithPosts = newsletterGroups.filter((category) => category.pages.length);
 
+    console.log(newsletterGroupsWithPosts);
+
     // ============================================================
     // 插入子节点
     // ============================================================
@@ -119,17 +124,68 @@ class Newsletter {
       for (const page of category.pages) {
         // Page Cover
         let PAGE_COVER;
+
+        // 很不幸，Notion 目前并不支持直接引用已上传到 Notion 中的图片，因此只能先下载，再上传
         const firstCover = NotionClient.getProperty(page, 'Cover')[0];
         if (firstCover) {
+          const imageHosting = new ImageHosting();
+          await imageHosting.init();
+          const hostingUrl = await imageHosting.uploadExternal(firstCover.file.url);
+
           PAGE_COVER = NotionClient.buildBlock(
             'image',
             {
               type: 'external',
-              external: { url: firstCover.file.url },
+              external: { url: hostingUrl },
             },
             { object: 'block' }
           );
         }
+
+        // const backupDirs = fs.readdirSync(
+        //   process.env.CHANNEL_BACKUP_DIR || path.resolve(__dirname, '../../backup')
+        // );
+        // const targetBackupDir = backupDirs.find((dirName) => {
+        //   const dirId = dirName.split('_')[dirName.split('_').length - 1];
+        //   return dirId === page.id;
+        // });
+        // const firstCover = fs
+        //   .readdirSync(targetBackupDir)
+        //   .find((fileName) => fileName.startsWith('cover_0'));
+        //
+        // // 如果找到车备份内容，则上传到图床
+        // if (firstCover) {
+        //   const imageHosting = new ImageHosting();
+        //   await imageHosting.init();
+        //   const { url } = await imageHosting.upload(firstCover);
+        //   console.log(url);
+        //
+        //   PAGE_COVER = NotionClient.buildBlock(
+        //     'image',
+        //     {
+        //       type: 'external',
+        //       external: { url },
+        //     },
+        //     { object: 'block' }
+        //   );
+        // }
+
+        // if (targetBackupDir) {
+        //   PAGE_COVER =
+        // }
+        // }
+
+        // const firstCover = NotionClient.getProperty(page, 'Cover')[0];
+        // if (firstCover) {
+        //   PAGE_COVER = NotionClient.buildBlock(
+        //     'image',
+        //     {
+        //       type: 'external',
+        //       external: { url: firstCover.file.url },
+        //     },
+        //     { object: 'block' }
+        //   );
+        // }
 
         // Page Header 2
         const pageTitleRichText = [];
@@ -207,8 +263,6 @@ class Newsletter {
     } catch (e) {
       console.log(`INSERT COPYRIGHT ERROR: ${e}`);
     }
-
-    console.log(newsletterGroups);
   }
 }
 

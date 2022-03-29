@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { CHANNEL_DATABASE_ID } = require('../config/constants');
 const { HttpClient } = require('./HttpClient');
+const { ImageHosting } = require('./ImageHosting');
 
 class Channel {
   constructor(env) {
@@ -128,9 +129,7 @@ class Channel {
     // 当前 post 文件夹
     const currentPostSpace = path.resolve(
       backupDir,
-      `${Dayjs().format(process.env.CHANNEL_BACKUP_FOLDER_TIME_FORMAT || 'YYYY-MM-DD_HH-ii-ss')}_${
-        pageCtx.id
-      }`
+      `${Dayjs().format('YYYY-MM-DD_HH-mm-ss')}_${pageCtx.id}`
     );
     if (!fs.existsSync(currentPostSpace)) fs.mkdirSync(currentPostSpace);
 
@@ -143,17 +142,8 @@ class Channel {
         const index = NotionClient.getProperty(pageCtx, 'Cover').indexOf(cover);
 
         try {
-          const imageUrl = cover.file.url;
-          const ext = imageUrl.substring(0, imageUrl.indexOf('?')).split('.').pop().toLowerCase();
-          const res = await this.$http.request({
-            url: imageUrl,
-            method: 'GET',
-            responseType: 'arraybuffer',
-            responseEncoding: 'binary',
-          });
-          fs.writeFileSync(path.join(currentPostSpace, `cover_${index}.${ext}`), res.data, {
-            encoding: 'binary',
-          });
+          const imageHosting = new ImageHosting();
+          await imageHosting.download(cover.file.url, currentPostSpace, `cover_${index}`);
         } catch (e) {
           console.log(`BACKUP COVER ERROR: ${e}`);
         }
