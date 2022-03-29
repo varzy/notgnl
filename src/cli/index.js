@@ -4,6 +4,7 @@ process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
 const { Command } = require('commander');
 const { Channel } = require('../core/Channel');
 const { Newsletter } = require('../core/Newsletter');
+const Dayjs = require('../utils/day');
 
 const program = new Command();
 const channel = new Channel('CLI');
@@ -47,7 +48,9 @@ const run = async () => {
 
   // 生成 Newsletter
   if (options.newsletter) {
-    await newsletter.generateNewsletter(options.startDay, options.endDay);
+    const startDay = options.startDay || Dayjs().subtract(7, 'day').format('YYYY-MM-DD');
+    const endDay = options.endDay || Dayjs().format('YYYY-MM-DD');
+    await newsletter.generateNewsletter(startDay, endDay);
   }
 };
 

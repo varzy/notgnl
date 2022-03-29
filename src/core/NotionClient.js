@@ -1,5 +1,6 @@
 const { Client } = require('@notionhq/client');
 const { NOTION_AUTH_KEY } = require('../config/constants');
+const HttpsProxyAgent = require('https-proxy-agent');
 
 class NotionClient {
   static getProperty(pageCtx, propertyName) {
@@ -7,8 +8,20 @@ class NotionClient {
     return pageCtx.properties[propertyName][type];
   }
 
+  static buildBlock(type, ctx, otherRootProps) {
+    return {
+      type,
+      [type]: ctx,
+      ...otherRootProps,
+    };
+  }
+
   constructor() {
-    this.notion = new Client({ auth: NOTION_AUTH_KEY });
+    const options = { auth: NOTION_AUTH_KEY };
+    if (process.env.ZYC_USE_PROXY) {
+      options.agent = new HttpsProxyAgent(process.env.ZYC_PROXY_ADDRESS);
+    }
+    this.notion = new Client(options);
   }
 
   self() {

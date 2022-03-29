@@ -11,8 +11,6 @@ class Channel {
     this.$echo = new Echoer(env);
     this.$no = new NotionClient();
     this.$tg = new TelegramClient();
-
-    this._escapeText = this._escapeText.bind(this);
   }
 
   async sendByPageId(pageId, disableUpdateStatus) {
@@ -196,7 +194,7 @@ class Channel {
         };
 
         if (!blockTypeRelation[block.type]) {
-          throw new Error(`Unsupported Block Type: ${block.type}`, block);
+          throw new Error(`Unsupported Block Type: ${block.type}`);
         }
 
         const method = blockTypeRelation[block.type];
