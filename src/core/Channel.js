@@ -1,7 +1,6 @@
 const { NotionClient } = require('./NotionClient');
 const { TelegramClient } = require('./TelegramClient');
 const Dayjs = require('../utils/day');
-const { Echoer } = require('./Echoer');
 const fs = require('fs');
 const path = require('path');
 const { CHANNEL_DATABASE_ID } = require('../config/constants');
@@ -9,8 +8,7 @@ const { HttpClient } = require('./HttpClient');
 const { ImageHosting } = require('./ImageHosting');
 
 class Channel {
-  constructor(env) {
-    this.$echo = new Echoer(env);
+  constructor() {
     this.$no = new NotionClient();
     this.$tg = new TelegramClient();
     this.$http = new HttpClient({ timeout: 50000 });
@@ -40,7 +38,7 @@ class Channel {
 
     // 无可发布内容
     if (!pages.results.length) {
-      return this.$echo.say({ code: '0', message: 'NOTHING_TO_PUBLISH' });
+      return { code: '0', message: 'NOTHING_TO_PUBLISH' };
     }
 
     // 对发送列表进行排序
@@ -153,7 +151,7 @@ class Channel {
     // ============================================
     // 发送完成
     // ============================================
-    return this.$echo.say({ code: 0, message: 'SENT' });
+    return { code: 0, message: 'SENT' };
   }
 
   /**

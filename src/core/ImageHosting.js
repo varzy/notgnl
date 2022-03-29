@@ -1,12 +1,13 @@
-/**
- * 图床
- * 目前使用 sm.ms
- */
 const { HttpClient } = require('./HttpClient');
 const path = require('path');
 const fs = require('fs');
 const FormData = require('form-data');
+const { Blob } = require('buffer');
 
+/**
+ * 图床
+ * 目前使用 sm.ms
+ */
 class ImageHosting {
   constructor() {
     this.cacheDir = path.resolve(__dirname, '../../.cache');
@@ -59,7 +60,12 @@ class ImageHosting {
       responseType: 'arraybuffer',
       responseEncoding: 'binary',
     });
-    return await this.upload(externalImageRes.data);
+
+    // fs.writeFileSync(path.join(this.cacheDir, `downloading.jpeg`), externalImageRes.data, { encoding: 'binary' });
+    //
+    // const file = fs.readFileSync(path.join(this.cacheDir, 'downloading.jpeg'), {encoding: "binary"});
+    return await this.upload(new Blob([externalImageRes.data]));
+    // return await this.upload(Uint8Array.from(externalImageRes.data).buffer);
   }
 
   _isLogin() {

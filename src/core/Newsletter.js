@@ -5,14 +5,12 @@ const {
   NEWSLETTER_DATABASE_ID,
 } = require('../config/constants');
 const { NotionClient } = require('./NotionClient');
-const { Echoer } = require('./Echoer');
 // const path = require('path');
 // const fs = require('fs');
 const { ImageHosting } = require('./ImageHosting');
 
 class Newsletter {
-  constructor(env) {
-    this.$echo = new Echoer(env);
+  constructor() {
     this.$no = new NotionClient();
   }
 
