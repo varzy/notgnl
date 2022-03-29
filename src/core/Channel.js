@@ -5,12 +5,14 @@ const { Echoer } = require('./Echoer');
 const fs = require('fs');
 const path = require('path');
 const { CHANNEL_DATABASE_ID } = require('../config/constants');
+const { HttpClient } = require('./HttpClient');
 
 class Channel {
   constructor(env) {
     this.$echo = new Echoer(env);
     this.$no = new NotionClient();
     this.$tg = new TelegramClient();
+    this.$http = new HttpClient({ timeout: 50000 });
   }
 
   async sendByPageId(pageId, disableUpdateStatus) {
@@ -101,7 +103,7 @@ class Channel {
     }
     // 多图
     else {
-      await this.$tg.sendMediaGroup({ media: COVERS, caption: TEXT });
+      await this.$tg.sendMediaGroup({ caption: TEXT, medias: COVERS });
     }
 
     // ============================================
@@ -117,9 +119,46 @@ class Channel {
     }
 
     // ============================================
-    // @TODO: 本地存档备份
+    // 本地存档备份
     // ============================================
-    fs.writeFileSync(path.resolve(__dirname, `../../backup/CONTENT_${+new Date()}.txt`), TEXT);
+    // 创建基础备份文件夹
+    const backupDir = process.env.CHANNEL_BACKUP_DIR || path.resolve(__dirname, '../../backup');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
+
+    // 当前 post 文件夹
+    const currentPostSpace = path.resolve(
+      backupDir,
+      `${Dayjs().format(process.env.CHANNEL_BACKUP_FOLDER_TIME_FORMAT || 'YYYY-MM-DD_HH-ii-ss')}_${
+        pageCtx.id
+      }`
+    );
+    if (!fs.existsSync(currentPostSpace)) fs.mkdirSync(currentPostSpace);
+
+    // 备份文字
+    fs.writeFileSync(path.join(currentPostSpace, '_text.txt'), TEXT);
+
+    // 备份图片
+    if (NotionClient.getProperty(pageCtx, 'Cover')[0]) {
+      for (const cover of NotionClient.getProperty(pageCtx, 'Cover')) {
+        const index = NotionClient.getProperty(pageCtx, 'Cover').indexOf(cover);
+
+        try {
+          const imageUrl = cover.file.url;
+          const ext = imageUrl.substring(0, imageUrl.indexOf('?')).split('.').pop().toLowerCase();
+          const res = await this.$http.request({
+            url: imageUrl,
+            method: 'GET',
+            responseType: 'arraybuffer',
+            responseEncoding: 'binary',
+          });
+          fs.writeFileSync(path.join(currentPostSpace, `cover_${index}.${ext}`), res.data, {
+            encoding: 'binary',
+          });
+        } catch (e) {
+          console.log(`BACKUP COVER ERROR: ${e}`);
+        }
+      }
+    }
 
     // ============================================
     // 发送完成

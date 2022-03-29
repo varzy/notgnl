@@ -1,11 +1,11 @@
-const Axios = require('axios');
+const { HttpClient } = require('./HttpClient');
 
 class TelegramClient {
   constructor() {
     this.chatId = process.env.TELEGRAM_CHAT_ID;
-    this.$http = Axios.create({
+    this.$http = new HttpClient({
       baseURL: `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`,
-      timeout: 5000,
+      timeout: 50000,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -30,12 +30,18 @@ class TelegramClient {
     return res.data;
   }
 
-  async sendMediaGroup({ caption, media }) {
-    media[0].caption = caption;
+  async sendMediaGroup({ caption, medias }) {
+    const mediaPhotos = medias.map((media) => ({
+      type: 'photo',
+      media,
+      parse_mode: 'MarkdownV2',
+    }));
+    mediaPhotos[0].caption = caption;
+
     const res = await this.$http.request({
       url: '/sendMediaGroup',
       method: 'POST',
-      data: { chat_id: this.chatId, parse_mode: 'MarkdownV2', media },
+      data: { chat_id: this.chatId, parse_mode: 'MarkdownV2', media: mediaPhotos },
     });
 
     return res.data;
