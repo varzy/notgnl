@@ -129,7 +129,7 @@ class Newsletter {
           const imageHosting = new ImageHosting();
           await imageHosting.init();
           const hostingUrl = await imageHosting.uploadExternal(firstCover.file.url);
-
+          console.log(hostingUrl);
           PAGE_COVER = NotionClient.buildBlock(
             'image',
             {
@@ -261,6 +261,8 @@ class Newsletter {
     } catch (e) {
       console.log(`INSERT COPYRIGHT ERROR: ${e}`);
     }
+
+    return { code: 0, message: 'GENERATED' };
   }
 }
 

@@ -2,7 +2,6 @@ const { HttpClient } = require('./HttpClient');
 const path = require('path');
 const fs = require('fs');
 const FormData = require('form-data');
-const { Blob } = require('buffer');
 
 /**
  * 图床
@@ -36,21 +35,25 @@ class ImageHosting {
     fs.writeFileSync(path.join(dir, `${name}.${ext}`), res.data, { encoding: 'binary' });
   }
 
-  async upload(file) {
+  async upload(file, filename) {
     const formData = new FormData();
-    formData.append('smfile', file);
+    filename
+      ? formData.append('smfile', file, { filename, contentType: 'multipart/form-data' })
+      : formData.append('smfile', file);
 
     const res = await this.$http.request({
       url: '/upload',
       method: 'POST',
       headers: {
-        'Content-Type': 'multipart/form-data',
         Authorization: this._getToken(),
+        ...formData.getHeaders(),
       },
       data: formData,
     });
 
-    return { url: res.data.data.success || null, data: res.data };
+    if (res.data.success) return res.data.data.url;
+    if (res.data.code === 'image_repeated') return res.data.images;
+    return null;
   }
 
   async uploadExternal(url) {
@@ -61,10 +64,30 @@ class ImageHosting {
       responseEncoding: 'binary',
     });
 
-    // fs.writeFileSync(path.join(this.cacheDir, `downloading.jpeg`), externalImageRes.data, { encoding: 'binary' });
+    // 先对文件进行保存
+    const cacheFile = path.join(this.cacheDir, `tmpimage`);
+    fs.writeFileSync(cacheFile, externalImageRes.data, { encoding: 'binary' });
+    // 进行上传
+    const uploadedRes = await this.upload(fs.createReadStream(cacheFile));
+    // 删除临时文件
+    fs.unlinkSync(cacheFile);
+
+    return uploadedRes;
+
+    // fs.writeFileSync(path.join(this.cacheDir, `downloading.${ext}`), externalImageRes.data, {
+    //   encoding: 'binary',
+    // });
+    //
+    // return await this.upload(
+    //   fs.createReadStream(externalImageRes.data),
+    //   `image.${ext}`
+    // );
+    // return await this.upload(new Blob([externalImageRes.data]), `image.${ext}`);
+
+    // return await this.upload(fs.createReadStream(path.join(this.cacheDir, `downloading.${ext}`)))
     //
     // const file = fs.readFileSync(path.join(this.cacheDir, 'downloading.jpeg'), {encoding: "binary"});
-    return await this.upload(new Blob([externalImageRes.data]));
+    // return await this.upload(new Int8Array(externalImageRes.data));
     // return await this.upload(Uint8Array.from(externalImageRes.data).buffer);
   }
 
