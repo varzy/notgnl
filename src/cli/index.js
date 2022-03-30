@@ -31,44 +31,31 @@ const run = async () => {
 
   // 根据页面 ID 发布，拥有最高优先级
   if (options.pageId) {
-    await channel.sendByPageId(options.pageId, options.disableUpdateStatus);
-    return;
+    return channel.sendByPageId(options.pageId, options.disableUpdateStatus);
   }
 
   // 发送当天的第一篇
   if (options.today) {
-    await channel.sendByDay(new Date(), options.disableUpdateStatus);
+    return await channel.sendByDay(new Date(), options.disableUpdateStatus);
   }
 
   // 按照日期发送
   if (options.day) {
-    await channel.sendByDay(options.day, options.disableUpdateStatus);
-    return;
+    return await channel.sendByDay(options.day, options.disableUpdateStatus);
   }
 
   // 生成 Newsletter
   if (options.newsletter) {
     const startDay = options.startDay || Dayjs().subtract(7, 'day').format('YYYY-MM-DD');
     const endDay = options.endDay || Dayjs().format('YYYY-MM-DD');
-    await newsletter.generateNewsletter(startDay, endDay);
+    return await newsletter.generateNewsletter(startDay, endDay);
   }
 };
 
-run();
-
-//
-// const { $channel } = require('../core');
-//
-// const program = new Command();
-// program
-//   .option('-i, --id <PageId>', 'Publishing PageId.')
-//   .option('-d, --day <Day>', 'Publishing Day.')
-//   .option('-g, --generate <Time>')
-//   .parse(process.argv);
-// const cliOptions = program.opts();
-//
-// if (cliOptions.id) {
-//   $channel.sendByPageId(cliOptions.id);
-// }
-//
-// $channel.sendByDay(cliOptions.day);
+run()
+  .then((res) => {
+    console.log(res);
+  })
+  .catch((e) => {
+    console.error(e);
+  });

@@ -116,7 +116,7 @@ class Newsletter {
         },
         { object: 'block' }
       );
-      await this._insertBlocks(newsletterPageCtx, CATEGORY_TITLE, 'CATEGORY TITLE');
+      await this._insertBlocks(newsletterPageCtx.id, [CATEGORY_TITLE], 'CATEGORY TITLE');
 
       // ======== 插入分类内容 ========
       for (const page of category.pages) {
@@ -170,12 +170,7 @@ class Newsletter {
         const CHILDREN = PAGE_COVER
           ? [PAGE_TITLE, PAGE_COVER, ...PAGE_CONTENT]
           : [PAGE_TITLE, ...PAGE_CONTENT];
-
-        try {
-          await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
-        } catch (e) {
-          console.log(`INSERT CONTENT ERROR: ${e}`);
-        }
+        await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
       }
     }
   }
@@ -204,7 +199,6 @@ class Newsletter {
         { object: 'block' }
       ),
     ];
-
     await this._insertBlocks(newsletterPageCtx.id, children, 'COPYRIGHT');
   }
 }
