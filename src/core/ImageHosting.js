@@ -73,22 +73,6 @@ class ImageHosting {
     fs.unlinkSync(cacheFile);
 
     return uploadedRes;
-
-    // fs.writeFileSync(path.join(this.cacheDir, `downloading.${ext}`), externalImageRes.data, {
-    //   encoding: 'binary',
-    // });
-    //
-    // return await this.upload(
-    //   fs.createReadStream(externalImageRes.data),
-    //   `image.${ext}`
-    // );
-    // return await this.upload(new Blob([externalImageRes.data]), `image.${ext}`);
-
-    // return await this.upload(fs.createReadStream(path.join(this.cacheDir, `downloading.${ext}`)))
-    //
-    // const file = fs.readFileSync(path.join(this.cacheDir, 'downloading.jpeg'), {encoding: "binary"});
-    // return await this.upload(new Int8Array(externalImageRes.data));
-    // return await this.upload(Uint8Array.from(externalImageRes.data).buffer);
   }
 
   _isLogin() {

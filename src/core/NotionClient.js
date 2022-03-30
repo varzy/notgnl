@@ -78,8 +78,8 @@ class NotionClient {
     return this.notion.blocks.children.list(query);
   }
 
-  async appendChildren(query) {
-    return this.notion.blocks.children.append(query);
+  async appendChildren(blockId, children) {
+    return this.notion.blocks.children.append({ block_id: blockId, children });
   }
 
   /**
