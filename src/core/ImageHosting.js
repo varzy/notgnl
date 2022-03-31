@@ -76,11 +76,7 @@ class ImageHosting {
   }
 
   _isLogin() {
-    if (!fs.existsSync(this.tokenFile)) return false;
-
-    const { lastLoginTime } = this._getTokenConfigFileCtx();
-    // 超过 7 天需要重新登录
-    return +new Date() - lastLoginTime < 7 * 24 * 60 * 60 * 1000;
+    return fs.existsSync(this.tokenFile);
   }
 
   async _login() {

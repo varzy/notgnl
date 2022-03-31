@@ -36,7 +36,7 @@ class Newsletter {
   }
 
   /**
-   * Notion Api 的 filter 规则实在太难用，因此获取前 100 条后在本地进行时间匹配
+   * Notion Api 关于时间的 filter 规则实在太难用，因此获取前 100 条后在本地进行时间匹配
    */
   async _getPublishingPosts(startTime, endTime) {
     const unNewsletterPosts = await this.$no.queryDatabase({
@@ -54,9 +54,20 @@ class Newsletter {
     });
   }
 
+  /**
+   *  创建新一期的 newsletter 页面，并且自动生成期号
+   */
   async _createNewNewsletterPage() {
-    const latestPage = await this.$no.latestPage(NEWSLETTER_DATABASE_ID);
-    const latestNO = latestPage ? latestPage.properties['NO'].number : 0;
+    const publishedPages = await this.$no.queryDatabase({
+      database_id: NEWSLETTER_DATABASE_ID,
+      filter: {
+        property: 'IsPublished',
+        checkbox: { equals: true },
+      },
+      sort: [{ property: 'created_time', direction: 'descending' }],
+    });
+    const latestPage = publishedPages.results[0];
+    const latestNO = latestPage ? NotionClient.getProperty(latestPage, 'NO') : 0;
     // 考虑到可能存在 .5 期的情况，因此向下取整
     const currentNO = Math.floor(latestNO) + 1;
 
@@ -111,8 +122,8 @@ class Newsletter {
       const CATEGORY_TITLE = NotionClient.buildBlock(
         'heading_2',
         {
-          rich_text: [{ type: 'text', text: { content: category.category } }],
-          color: 'purple_background',
+          rich_text: [{ type: 'text', text: { content: `『${category.category}』` } }],
+          // color: 'purple_background',
         },
         { object: 'block' }
       );
@@ -129,7 +140,7 @@ class Newsletter {
           const imageHosting = new ImageHosting();
           await imageHosting.init();
           const hostingUrl = await imageHosting.uploadExternal(firstCover.file.url);
-          console.log(hostingUrl);
+
           PAGE_COVER = NotionClient.buildBlock(
             'image',
             {
@@ -140,7 +151,7 @@ class Newsletter {
           );
         }
 
-        // Page Header 2
+        // Page Title
         const pageTitleRichText = [];
         if (page.icon) {
           pageTitleRichText.push({ type: 'text', text: { content: page.icon?.emoji + ' ' } });
@@ -177,6 +188,7 @@ class Newsletter {
 
   async _insertCopyright(newsletterPageCtx) {
     const children = [
+      NotionClient.buildBlock('divider', {}),
       NotionClient.buildBlock(
         'paragraph',
         { rich_text: [{ type: 'text', text: { content: `Thanks for reading.` } }] },

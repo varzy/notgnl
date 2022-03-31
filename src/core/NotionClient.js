@@ -52,20 +52,6 @@ class NotionClient {
     return this.notion.pages.create(query);
   }
 
-  async latestPage(databaseId, isByCreated = true) {
-    const res = await this.notion.databases.query({
-      database_id: databaseId,
-      sorts: [
-        {
-          timestamp: isByCreated ? 'created_time' : 'last_edited_time',
-          direction: 'descending',
-        },
-      ],
-    });
-
-    return res.results[0];
-  }
-
   // ================================================
   // Blocks
   // ================================================
