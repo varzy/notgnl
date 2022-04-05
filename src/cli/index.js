@@ -1,5 +1,5 @@
 require('dotenv').config();
-process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
+// process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
 
 const { Command } = require('commander');
 const { Channel } = require('../core/Channel');
@@ -15,12 +15,12 @@ const newsletter = new Newsletter('CLI');
  */
 program
   .option('-p, --page-id <PageId>', 'Publishing pageId.')
-  .option('--today', `Publish today's first post.`)
+  .option('-t, --today', `Publish today's first post.`)
   .option('-d, --day [Day]', 'The publishing day of notion post.')
   .option('--disable-update-status', 'Is auto update post status after published.')
   .option('-n, --newsletter', 'Generate newsletter')
-  .option('-sd, --start-day <StartDay>', 'Start Day.')
-  .option('-ed, --end-day <EndDay>', 'End Day.')
+  .option('-s, --start-day <StartDay>', 'Start Day.')
+  .option('-e, --end-day <EndDay>', 'End Day.')
   .parse(process.argv);
 
 /**

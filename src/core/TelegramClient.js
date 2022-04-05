@@ -3,11 +3,14 @@ const { HttpClient } = require('./HttpClient');
 class TelegramClient {
   constructor() {
     this.chatId = process.env.TELEGRAM_CHAT_ID;
-    this.$http = new HttpClient({
-      baseURL: `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`,
-      timeout: 50000,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    this.$http = new HttpClient(
+      {
+        baseURL: `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`,
+        timeout: 50000,
+        headers: { 'Content-Type': 'application/json' },
+      },
+      true
+    );
   }
 
   async sendMessage({ text }) {

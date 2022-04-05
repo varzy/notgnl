@@ -13,7 +13,7 @@ class ImageHosting {
     this.tokenFile = path.join(this.cacheDir, 'smms-token.json');
 
     this.$http = new HttpClient({
-      baseURL: 'https://sm.ms/api/v2/',
+      baseURL: 'https://sm.ms/api/v2',
       timeout: 50000,
     });
   }
