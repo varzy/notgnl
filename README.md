@@ -11,4 +11,5 @@
 - [ ] Dockerize
 - [ ] 投稿机器人接口
 - [ ] 定时任务，自动发送 & 生成 Newsletter
-- [ ] Post 备份
+- [x] Post 备份
+- [x] 自动生成 Newsletter 标题

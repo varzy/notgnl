@@ -20,14 +20,14 @@ class Newsletter {
     const publishingPosts = await this._getPublishingPosts(startTime, endTime);
     if (!publishingPosts) return { code: 1, message: 'Nothing to build Newsletter.' };
 
+    // 根据 posts 的分类生成内容组
+    const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
+
     // 创建新的 newsletter 页面
-    const newsletterPageCtx = await this._createNewNewsletterPage();
+    const newsletterPageCtx = await this._createNewNewsletterPage(newsletterGroups);
 
     // 插入目录
     await this._insertTableOfContents(newsletterPageCtx);
-
-    // 根据 posts 的分类生成内容组
-    const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
 
     // 插入内容
     await this._insertContent(newsletterPageCtx, newsletterGroups);
@@ -62,10 +62,11 @@ class Newsletter {
   }
 
   /**
-   *  创建新一期的 newsletter 页面，并且自动生成期号
+   *  创建新一期的 newsletter 页面，并且自动生成期号和标题
    */
-  async _createNewNewsletterPage() {
+  async _createNewNewsletterPage(newsletterGroups) {
     const publishedPages = await this.$no.queryDatabase({
+      // ============ 生成期号 ============
       database_id: NEWSLETTER_DATABASE_ID,
       filter: {
         property: 'IsPublished',
@@ -78,15 +79,33 @@ class Newsletter {
     // 考虑到可能存在 .5 期的情况，因此向下取整
     const currentNO = Math.floor(latestNO) + 1;
 
+    // ============ 生成标题 ============
+    // 取每个分类下的第一个 Post 的标题组合成新标题
+    const pageTitleItems = [];
+    newsletterGroups.forEach((category, index) => {
+      if (pageTitleItems[category.category]) return;
+      pageTitleItems[category.category] = {
+        order: index,
+        text: category.pages[0].properties.Name.title.map((title) => title.plain_text).join(''),
+      };
+    });
+    const pageTitleContent = Object.values(pageTitleItems)
+      .sort((a, b) => a.order - b.order)
+      .map((item) => item.text)
+      .join('、');
+
+    // ============ 生成 Emoji ============
+    // 尝试取第一个 Post 的 Emoji
+    const pageEmoji = newsletterGroups[0].pages[0].icon?.emoji || '💌';
+
     return await this.$no.createPage({
       parent: { database_id: NEWSLETTER_DATABASE_ID },
+      icon: { type: 'emoji', emoji: pageEmoji },
       properties: {
         Name: {
           title: [
             {
-              text: {
-                content: `#${currentNO} AUTO GENERATED AT ${Day().format('YYYY-MM-DD HH:mm:ss')}`,
-              },
+              text: { content: `#${currentNO} ${pageTitleContent}` },
             },
           ],
         },
@@ -137,7 +156,7 @@ class Newsletter {
       const CATEGORY_TITLE = NotionClient.buildBlock(
         'heading_2',
         {
-          rich_text: [{ type: 'text', text: { content: `『${category.category}』` } }],
+          rich_text: [{ type: 'text', text: { content: `「${category.category}」` } }],
           // color: 'purple',
         },
         { object: 'block' }
