@@ -22,19 +22,21 @@ class Newsletter {
     if (!publishingPosts) return { code: 1, message: 'Nothing to build Newsletter.' };
 
     // 根据 posts 的分类生成内容组
-    const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
+    // const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
 
     // 创建新的 newsletter 页面
     const newsletterPageCtx = await this._createNewNewsletterPage(
-      newsletterGroups,
+      // newsletterGroups,
       publishingPosts
     );
+
+    // await this._insertPreface(newsletterPageCtx);
 
     // 插入目录
     await this._insertTableOfContents(newsletterPageCtx);
 
     // 插入内容
-    await this._insertContent(newsletterPageCtx, newsletterGroups);
+    await this._insertContent(newsletterPageCtx, publishingPosts);
 
     // 插入 copyright
     await this._insertCopyright(newsletterPageCtx);
@@ -100,20 +102,26 @@ class Newsletter {
       },
     });
 
-    return unNewsletterPosts.results.filter((post) => {
-      const realPubTime = Day(NotionClient.getProperty(post, 'RealPubTime').start);
-      const filterStartTime = Day(startTime).startOf('day');
-      const filterEndTime = Day(endTime).endOf('day');
-      return (
-        realPubTime.isSameOrBefore(filterEndTime) && realPubTime.isSameOrAfter(filterStartTime)
+    return unNewsletterPosts.results
+      .filter((post) => {
+        const realPubTime = Day(NotionClient.getProperty(post, 'RealPubTime').start);
+        const filterStartTime = Day(startTime).startOf('day');
+        const filterEndTime = Day(endTime).endOf('day');
+        return (
+          realPubTime.isSameOrBefore(filterEndTime) && realPubTime.isSameOrAfter(filterStartTime)
+        );
+      })
+      .sort(
+        (a, b) =>
+          +new Date(a.properties.RealPubTime.date.start) -
+          +new Date(b.properties.RealPubTime.date.start)
       );
-    });
   }
 
   /**
    *  创建新一期的 newsletter 页面，并且自动生成期号和标题
    */
-  async _createNewNewsletterPage(newsletterGroups, publishingPosts) {
+  async _createNewNewsletterPage(publishingPosts) {
     const publishedPages = await this.$no.queryDatabase({
       // ============ 生成期号 ============
       database_id: NEWSLETTER_DATABASE_ID,
@@ -128,33 +136,28 @@ class Newsletter {
     logger.info(`New Newsletter Create Params: NO: ${currentNO}`);
 
     // ============ 生成标题 ============
+    let emojiFromFirstPost;
     // 取每个分类下的第一个 Post 的标题组合成新标题
-    const pageTitleItems = [];
-    newsletterGroups.forEach((category, index) => {
-      if (pageTitleItems[category.category]) return;
-      pageTitleItems[category.category] = {
-        order: index,
-        text: category.pages[0].properties.Name.title.map((title) => title.plain_text).join(''),
-      };
+    const pageTitleItems = publishingPosts.map((post) => {
+      // 记录第一个 emoji
+      if (!emojiFromFirstPost && post.icon?.emoji) {
+        emojiFromFirstPost = post.icon.emoji;
+      }
+      return post.properties.Name.title.map((title) => title.plain_text).join('');
+
+      // if (pageTitleItems[category.category]) return;
+      // pageTitleItems[category.category] = {
+      //   order: index,
+      //   text: category.pages[0].properties.Name.title.map((title) => title.plain_text).join(''),
+      // };
     });
-    const pageTitleContent = Object.values(pageTitleItems)
-      .sort((a, b) => a.order - b.order)
-      .map((item) => item.text)
-      .join('、')
-      .replaceAll('《', '')
-      .replaceAll('》', '');
+    const pageTitleContent = pageTitleItems.join('、').replaceAll('《', '').replaceAll('》', '');
 
     logger.info(`New Newsletter Create Params: TitleContent: ${pageTitleContent}`);
 
-    // ============ 生成 Emoji ============
-    // 尝试取第一个 Post 的 Emoji
-    const pageEmoji = newsletterGroups[0].pages[0].icon?.emoji || '💌';
-
-    logger.info(`New Newsletter Create Params: Emoji: ${pageEmoji}`);
-
     return await this.$no.createPage({
       parent: { database_id: NEWSLETTER_DATABASE_ID },
-      icon: { type: 'emoji', emoji: pageEmoji },
+      icon: { type: 'emoji', emoji: emojiFromFirstPost },
       properties: {
         Name: {
           title: [
@@ -174,31 +177,35 @@ class Newsletter {
     });
   }
 
-  async _buildNewsletterGroups(publishingPosts) {
-    const newsletterGroups = NEWSLETTER_CATEGORIES.map((category) => ({ category, pages: [] }));
-    newsletterGroups.push({ category: '以及这些...', pages: [] });
-    publishingPosts.forEach((page) => {
-      const group = newsletterGroups.find(
-        (group) => group.category === NotionClient.getProperty(page, 'Category').name
-      );
-      if (group) {
-        group.pages.push(page);
-      } else {
-        newsletterGroups[newsletterGroups.length - 1].pages.push(page);
-      }
-    });
+  // async _buildNewsletterGroups(publishingPosts) {
+  //   const newsletterGroups = NEWSLETTER_CATEGORIES.map((category) => ({ category, pages: [] }));
+  //   newsletterGroups.push({ category: '以及这些...', pages: [] });
+  //   publishingPosts.forEach((page) => {
+  //     const group = newsletterGroups.find(
+  //       (group) => group.category === NotionClient.getProperty(page, 'Category').name
+  //     );
+  //     if (group) {
+  //       group.pages.push(page);
+  //     } else {
+  //       newsletterGroups[newsletterGroups.length - 1].pages.push(page);
+  //     }
+  //   });
 
-    return newsletterGroups
-      .filter((category) => category.pages.length)
-      .map((category) => {
-        category.pages = category.pages.sort(
-          (a, b) =>
-            +new Date(a.properties.RealPubTime.date.start) -
-            +new Date(b.properties.RealPubTime.date.start)
-        );
-        return category;
-      });
-  }
+  //   return newsletterGroups
+  //     .filter((category) => category.pages.length)
+  //     .map((category) => {
+  //       category.pages = category.pages.sort(
+  //         (a, b) =>
+  //           +new Date(a.properties.RealPubTime.date.start) -
+  //           +new Date(b.properties.RealPubTime.date.start)
+  //       );
+  //       return category;
+  //     });
+  // }
+
+  // ================================================================
+  // 为 Newsletter 插入各种 Blocks
+  // ================================================================
 
   async _insertBlocks(newsletterPageId, children, label) {
     try {
@@ -217,42 +224,76 @@ class Newsletter {
     );
   }
 
-  async _insertContent(newsletterPageCtx, newsletterGroups) {
-    for (const [index, category] of newsletterGroups.entries()) {
-      // ======== 插入分类标题 ========
-      const DIVIDER = NotionClient.buildBlock('divider', {});
-      const CATEGORY_TITLE = NotionClient.buildBlock(
+  async _insertContent(newsletterPageCtx, publishingPosts) {
+    // ======== 插入大标题 ========
+    const HEADER = [
+      NotionClient.buildBlock('divider', {}),
+      NotionClient.buildBlock(
         'heading_1',
         {
-          rich_text: [{ type: 'text', text: { content: `「${category.category}」` } }],
+          rich_text: [{ type: 'text', text: { content: `「本周分享」` } }],
         },
         { object: 'block' }
-      );
-      const categoryContent = index === 0 ? [CATEGORY_TITLE] : [DIVIDER, CATEGORY_TITLE];
+      ),
+    ];
+    await this._insertBlocks(newsletterPageCtx.id, HEADER, 'CONTENT HEADER');
 
-      await this._insertBlocks(newsletterPageCtx.id, categoryContent, 'CATEGORY TITLE');
+    // ======== 插入 Post 页面 ========
+    for (const post of publishingPosts) {
+      // Page Title. Block || null
+      const PAGE_TITLE = this._buildBlockTitle(post);
 
-      // ======== 插入分类内容 ========
-      for (const page of category.pages) {
-        // Page Cover. Block[] || null
-        const PAGE_COVER = await this._buildBlockFirstCover(page);
+      // Page Tags. Block || null
+      const PAGE_TAGS = this._buildBlockMeta(post);
 
-        // Page Title. Block || null
-        const PAGE_TITLE = this._buildBlockTitle(page);
+      // Page Cover. Block[] || null
+      const PAGE_COVER = await this._buildBlockFirstCover(post);
 
-        // Page Tags. Block || null
-        const PAGE_TAGS = this._buildBlockTags(page);
+      // Page Content
+      const PAGE_CONTENT = await this._buildBlockContent(post);
 
-        // Page Content
-        const PAGE_CONTENT = await this._buildBlockContent(page);
-
-        // 组装
-        const CHILDREN = PAGE_COVER
-          ? [PAGE_TITLE, PAGE_TAGS, PAGE_COVER, ...PAGE_CONTENT]
-          : [PAGE_TITLE, PAGE_TAGS, ...PAGE_CONTENT];
-        await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
-      }
+      // 组装
+      const CHILDREN = PAGE_COVER
+        ? [PAGE_TITLE, PAGE_TAGS, PAGE_COVER, ...PAGE_CONTENT]
+        : [PAGE_TITLE, PAGE_TAGS, ...PAGE_CONTENT];
+      await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
     }
+
+    // for (const [index, category] of newsletterGroups.entries()) {
+    //   // ======== 插入分类标题 ========
+    //   const DIVIDER = NotionClient.buildBlock('divider', {});
+    //   const CATEGORY_TITLE = NotionClient.buildBlock(
+    //     'heading_1',
+    //     {
+    //       rich_text: [{ type: 'text', text: { content: `「${category.category}」` } }],
+    //     },
+    //     { object: 'block' }
+    //   );
+    //   const categoryContent = index === 0 ? [CATEGORY_TITLE] : [DIVIDER, CATEGORY_TITLE];
+
+    //   await this._insertBlocks(newsletterPageCtx.id, categoryContent, 'CATEGORY TITLE');
+
+    //   // ======== 插入分类内容 ========
+    //   for (const page of category.pages) {
+    //     // Page Cover. Block[] || null
+    //     const PAGE_COVER = await this._buildBlockFirstCover(page);
+
+    //     // Page Title. Block || null
+    //     const PAGE_TITLE = this._buildBlockTitle(page);
+
+    //     // Page Tags. Block || null
+    //     const PAGE_TAGS = this._buildBlockMeta(page);
+
+    //     // Page Content
+    //     const PAGE_CONTENT = await this._buildBlockContent(page);
+
+    //     // 组装
+    //     const CHILDREN = PAGE_COVER
+    //       ? [PAGE_TITLE, PAGE_TAGS, PAGE_COVER, ...PAGE_CONTENT]
+    //       : [PAGE_TITLE, PAGE_TAGS, ...PAGE_CONTENT];
+    //     await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
+    //   }
+    // }
   }
 
   async _insertCopyright(newsletterPageCtx) {
@@ -272,6 +313,10 @@ class Newsletter {
     ];
     await this._insertBlocks(newsletterPageCtx.id, children, 'COPYRIGHT');
   }
+
+  // ================================================================
+  // 构建 Newsletter 的各种 Block
+  // ================================================================
 
   // 很不幸，Notion 目前并不支持直接引用已上传到 Notion 中的图片，因此只能把封面图先下载，再上传，托管于图床
   async _buildBlockFirstCover(page) {
@@ -311,12 +356,12 @@ class Newsletter {
     );
   }
 
-  _buildBlockTags(page) {
-    const tags = NotionClient.getProperty(page, 'Tags');
+  // @TODO: 添加发布时间
+  _buildBlockMeta(page) {
+    const category = NotionClient.getProperty(page, 'Category').name;
+    const tags = NotionClient.getProperty(page, 'Tags').map((tag) => tag.name);
+    const tagsContent = [category, ...tags].map((tag) => `#${tag}`).join(' ');
 
-    if (!tags.length) return null;
-
-    const tagsContent = tags.map((tag) => `#${tag.name}`).join(' ');
     return NotionClient.buildBlock('paragraph', {
       rich_text: [
         {
