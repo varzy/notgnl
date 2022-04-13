@@ -24,7 +24,10 @@ class Newsletter {
     const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
 
     // 创建新的 newsletter 页面
-    const newsletterPageCtx = await this._createNewNewsletterPage(newsletterGroups);
+    const newsletterPageCtx = await this._createNewNewsletterPage(
+      newsletterGroups,
+      publishingPosts
+    );
 
     // 插入目录
     await this._insertTableOfContents(newsletterPageCtx);
@@ -36,6 +39,44 @@ class Newsletter {
     await this._insertCopyright(newsletterPageCtx);
 
     return { code: 0, message: 'GENERATED' };
+  }
+
+  /**
+   * 发布 Newsletter
+   */
+  async publishNewsletter(newsletterId) {
+    // 获取要发布的 id。如果目标 newsletterId 不存在，则自动取列表中未发布的最后一个
+    let targetNewsletterId = newsletterId;
+    if (!targetNewsletterId) {
+      const unpublishedNewsletters = await this.$no.queryDatabase({
+        database_id: NEWSLETTER_DATABASE_ID,
+        filter: {
+          property: 'IsPublished',
+          checkbox: { equals: false },
+        },
+      });
+      const sortedNewsletters = unpublishedNewsletters.results.sort(
+        (a, b) =>
+          +new Date(b.properties.CreatedAt.date.start) -
+          +new Date(a.properties.CreatedAt.date.start)
+      );
+      if (!sortedNewsletters.length) return { code: 1, message: 'Nothing to publish.' };
+
+      targetNewsletterId = sortedNewsletters[0].id;
+    }
+
+    // 获取页面信息
+    const pageCtx = await this.$no.getPageCtx(targetNewsletterId);
+
+    // 更新此 newsletter 关联的 channel post 状态
+    for (const post in NotionClient.getProperty(pageCtx, 'relation')) {
+      await this.$no.updateProperty(post.id, { Status: { select: { name: 'Published' } } });
+    }
+
+    // 更新此 newsletter 的自身发布状态
+    await this.$no.updateProperty(pageCtx.id, { isPublished: { checkbox: true } });
+
+    return { code: 0, message: 'PUBLISHED' };
   }
 
   /**
@@ -64,14 +105,11 @@ class Newsletter {
   /**
    *  创建新一期的 newsletter 页面，并且自动生成期号和标题
    */
-  async _createNewNewsletterPage(newsletterGroups) {
+  async _createNewNewsletterPage(newsletterGroups, publishingPosts) {
     const publishedPages = await this.$no.queryDatabase({
       // ============ 生成期号 ============
       database_id: NEWSLETTER_DATABASE_ID,
-      filter: {
-        property: 'IsPublished',
-        checkbox: { equals: true },
-      },
+      filter: { property: 'IsPublished', checkbox: { equals: true } },
       sort: [{ property: 'created_time', direction: 'descending' }],
     });
     const latestPage = publishedPages.results[0];
@@ -92,7 +130,9 @@ class Newsletter {
     const pageTitleContent = Object.values(pageTitleItems)
       .sort((a, b) => a.order - b.order)
       .map((item) => item.text)
-      .join('、');
+      .join('、')
+      .replaceAll('《', '')
+      .replaceAll('》', '');
 
     // ============ 生成 Emoji ============
     // 尝试取第一个 Post 的 Emoji
@@ -110,7 +150,17 @@ class Newsletter {
           ],
         },
         NO: { number: latestNO + 1 },
-        GeneratedAt: {
+        RelatedToChannelPosts: {
+          relation: publishingPosts.map((post) => ({ id: post.id })),
+        },
+        // PostIds: {
+        //   rich_text: [
+        //     {
+        //       text: { content: postIds },
+        //     },
+        //   ],
+        // },
+        CreatedAt: {
           date: { start: Day().toISOString(), time_zone: Day.tz.guess() },
         },
       },
@@ -131,7 +181,16 @@ class Newsletter {
       }
     });
 
-    return newsletterGroups.filter((category) => category.pages.length);
+    return newsletterGroups
+      .filter((category) => category.pages.length)
+      .map((category) => {
+        category.pages = category.pages.sort(
+          (a, b) =>
+            +new Date(a.properties.RealPubTime.date.start) -
+            +new Date(b.properties.RealPubTime.date.start)
+        );
+        return category;
+      });
   }
 
   async _insertBlocks(newsletterPageId, children, label) {
@@ -151,17 +210,18 @@ class Newsletter {
   }
 
   async _insertContent(newsletterPageCtx, newsletterGroups) {
-    for (const category of newsletterGroups) {
+    for (const [index, category] of newsletterGroups.entries()) {
       // ======== 插入分类标题 ========
+      const DIVIDER = NotionClient.buildBlock('divider', {});
       const CATEGORY_TITLE = NotionClient.buildBlock(
-        'heading_2',
+        'heading_1',
         {
           rich_text: [{ type: 'text', text: { content: `「${category.category}」` } }],
-          // color: 'purple',
         },
         { object: 'block' }
       );
-      await this._insertBlocks(newsletterPageCtx.id, [CATEGORY_TITLE], 'CATEGORY TITLE');
+      const categoryContent = index === 0 ? [CATEGORY_TITLE] : [DIVIDER, CATEGORY_TITLE];
+      await this._insertBlocks(newsletterPageCtx.id, categoryContent, 'CATEGORY TITLE');
 
       // ======== 插入分类内容 ========
       for (const page of category.pages) {
@@ -200,12 +260,6 @@ class Newsletter {
           rich_text: [
             { type: 'text', text: { content: `个人主页：` } },
             { type: 'text', text: { content: `varzy.me`, link: { url: `https://varzy.me` } } },
-            { type: 'text', text: { content: ` | ` } },
-            { type: 'text', text: { content: `创作者中心：` } },
-            {
-              type: 'text',
-              text: { content: `varzy.notion.site`, link: { url: `https://varzy.notion.site` } },
-            },
           ],
         },
         { object: 'block' }
@@ -246,8 +300,8 @@ class Newsletter {
     pageTitleRichText.push(_title);
 
     return NotionClient.buildBlock(
-      'heading_3',
-      { rich_text: pageTitleRichText, color: 'purple' },
+      'heading_2',
+      { rich_text: pageTitleRichText, color: page.properties.TitleLink.url ? 'blue' : 'default' },
       { object: 'block' }
     );
   }
@@ -270,13 +324,19 @@ class Newsletter {
     });
   }
 
+  // @TODO: 移除空白行; 根据不同类型生成不同格式
   async _buildBlockContent(page) {
     const pageBlocks = await this.$no.getFullBlocksList(page.id);
-    return pageBlocks.results.map((block) => ({
-      object: 'block',
-      type: block.type,
-      [block.type]: block[block.type],
-    }));
+    return (
+      pageBlocks.results
+        // 过滤空白区块
+        .filter((block) => !(block.type === 'paragraph' && !block.paragraph.rich_text.length))
+        .map((block) => ({
+          object: 'block',
+          type: block.type,
+          [block.type]: block[block.type],
+        }))
+    );
   }
 }
 
