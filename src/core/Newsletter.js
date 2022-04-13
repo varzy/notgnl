@@ -1,6 +1,6 @@
 const Day = require('../utils/day');
 const {
-  NEWSLETTER_CATEGORIES,
+  // NEWSLETTER_CATEGORIES,
   CHANNEL_DATABASE_ID,
   NEWSLETTER_DATABASE_ID,
 } = require('../config/constants');
