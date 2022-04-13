@@ -6,6 +6,7 @@ const {
 } = require('../config/constants');
 const { NotionClient } = require('./NotionClient');
 const { ImageHosting } = require('./ImageHosting');
+const { logger } = require('../utils/logger');
 
 class Newsletter {
   constructor() {
@@ -44,7 +45,7 @@ class Newsletter {
   /**
    * 发布 Newsletter
    */
-  async publishNewsletter(newsletterId) {
+  async publishNewsletter(newsletterId, dryRun) {
     // 获取要发布的 id。如果目标 newsletterId 不存在，则自动取列表中未发布的最后一个
     let targetNewsletterId = newsletterId;
     if (!targetNewsletterId) {
@@ -65,16 +66,23 @@ class Newsletter {
       targetNewsletterId = sortedNewsletters[0].id;
     }
 
+    logger.info(`Ready to Publish NewsletterId: ${targetNewsletterId}`);
+
     // 获取页面信息
     const pageCtx = await this.$no.getPageCtx(targetNewsletterId);
 
     // 更新此 newsletter 关联的 channel post 状态
-    for (const post in NotionClient.getProperty(pageCtx, 'relation')) {
-      await this.$no.updateProperty(post.id, { Status: { select: { name: 'Published' } } });
+    for (const post of NotionClient.getProperty(pageCtx, 'RelatedToChannelPosts')) {
+      await this.$no.updateProperty(post.id, {
+        Status: { select: { name: dryRun ? 'UnNewsletter' : 'Published' } },
+      });
+      logger.info(`RelatedToChannelPost Status Updated: ${post.id}`);
     }
+    logger.info(`RelatedToChannelPosts Statuses All Updated`);
 
     // 更新此 newsletter 的自身发布状态
-    await this.$no.updateProperty(pageCtx.id, { isPublished: { checkbox: true } });
+    await this.$no.updateProperty(pageCtx.id, { IsPublished: { checkbox: !dryRun } });
+    logger.info(`Newsletter IsPublished checkbox has been Checked`);
 
     return { code: 0, message: 'PUBLISHED' };
   }
@@ -117,6 +125,8 @@ class Newsletter {
     // 考虑到可能存在 .5 期的情况，因此向下取整
     const currentNO = Math.floor(latestNO) + 1;
 
+    logger.info(`New Newsletter Create Params: NO: ${currentNO}`);
+
     // ============ 生成标题 ============
     // 取每个分类下的第一个 Post 的标题组合成新标题
     const pageTitleItems = [];
@@ -134,9 +144,13 @@ class Newsletter {
       .replaceAll('《', '')
       .replaceAll('》', '');
 
+    logger.info(`New Newsletter Create Params: TitleContent: ${pageTitleContent}`);
+
     // ============ 生成 Emoji ============
     // 尝试取第一个 Post 的 Emoji
     const pageEmoji = newsletterGroups[0].pages[0].icon?.emoji || '💌';
+
+    logger.info(`New Newsletter Create Params: Emoji: ${pageEmoji}`);
 
     return await this.$no.createPage({
       parent: { database_id: NEWSLETTER_DATABASE_ID },
@@ -153,13 +167,6 @@ class Newsletter {
         RelatedToChannelPosts: {
           relation: publishingPosts.map((post) => ({ id: post.id })),
         },
-        // PostIds: {
-        //   rich_text: [
-        //     {
-        //       text: { content: postIds },
-        //     },
-        //   ],
-        // },
         CreatedAt: {
           date: { start: Day().toISOString(), time_zone: Day.tz.guess() },
         },
@@ -196,8 +203,9 @@ class Newsletter {
   async _insertBlocks(newsletterPageId, children, label) {
     try {
       await this.$no.appendChildren(newsletterPageId, children);
+      logger.info(`Insert Blocks: Success: ${label}`);
     } catch (e) {
-      console.log(`INSERT ERROR: ${label}: ${e}`);
+      logger.error(`Insert Blocks: Error: ${label}: ${e}`);
     }
   }
 
@@ -221,6 +229,7 @@ class Newsletter {
         { object: 'block' }
       );
       const categoryContent = index === 0 ? [CATEGORY_TITLE] : [DIVIDER, CATEGORY_TITLE];
+
       await this._insertBlocks(newsletterPageCtx.id, categoryContent, 'CATEGORY TITLE');
 
       // ======== 插入分类内容 ========

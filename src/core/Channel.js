@@ -6,6 +6,7 @@ const path = require('path');
 const { CHANNEL_DATABASE_ID } = require('../config/constants');
 const { HttpClient } = require('./HttpClient');
 const { ImageHosting } = require('./ImageHosting');
+const { logger } = require('../utils/logger');
 
 class Channel {
   constructor() {
@@ -14,12 +15,12 @@ class Channel {
     this.$http = new HttpClient({ timeout: 50000 });
   }
 
-  async sendByPageId(pageId, disableUpdateStatus) {
+  async sendByPageId(pageId, dryRun) {
     const ctx = await this.$no.getPageCtx(pageId);
-    return await this._send(ctx, disableUpdateStatus);
+    return await this._send(ctx, dryRun);
   }
 
-  async sendByDay(day, disableUpdateStatus) {
+  async sendByDay(day, dryRun) {
     const pages = await this.$no.queryDatabase({
       database_id: CHANNEL_DATABASE_ID,
       filter: {
@@ -46,7 +47,7 @@ class Channel {
       (a, b) => a.properties['PubOrder'].number - b.properties['PubOrder'].number
     );
 
-    return await this._send(sortedResults[0], disableUpdateStatus);
+    return await this._send(sortedResults[0], dryRun);
   }
 
   /**
@@ -55,7 +56,9 @@ class Channel {
    * 3. Notion 页面状态更新
    * 4. 本地备份
    */
-  async _send(pageCtx, disableUpdateStatus) {
+  async _send(pageCtx, dryRun) {
+    logger.info(`Sending Post: ${pageCtx.id}`);
+
     // ============================================
     // 获取封面
     // ============================================
@@ -89,26 +92,31 @@ class Channel {
       TEXT += `\n\n频道：@AboutZY`;
     }
 
+    logger.info(`Ready send to Telegram: COVERS: ${COVERS}`);
+    logger.info(`Ready send to Telegram: TEXT: ${TEXT}`);
+
     // ============================================
     // 发送至 Telegram
     // ============================================
-    // 无图片
-    if (!COVERS.length) {
-      await this.$tg.sendMessage({ text: TEXT });
-    }
-    // 1 张图片
-    else if (COVERS.length === 1) {
-      await this.$tg.sendPhoto({ caption: TEXT, photo: COVERS[0] });
-    }
-    // 多图
-    else {
-      await this.$tg.sendMediaGroup({ caption: TEXT, medias: COVERS });
+    if (!dryRun) {
+      // 无图片
+      if (!COVERS.length) {
+        await this.$tg.sendMessage({ text: TEXT });
+      }
+      // 1 张图片
+      else if (COVERS.length === 1) {
+        await this.$tg.sendPhoto({ caption: TEXT, photo: COVERS[0] });
+      }
+      // 多图
+      else {
+        await this.$tg.sendMediaGroup({ caption: TEXT, medias: COVERS });
+      }
     }
 
     // ============================================
     // Notion 页面状态、发布时间更新
     // ============================================
-    if (!disableUpdateStatus) {
+    if (!dryRun) {
       await this.$no.updateProperty(pageCtx.id, {
         Status: { select: { name: 'UnNewsletter' } },
         RealPubTime: {
@@ -134,6 +142,8 @@ class Channel {
     // 备份文字
     fs.writeFileSync(path.join(currentPostSpace, '_text.txt'), TEXT);
 
+    logger.info(`Post Text Backup Success`);
+
     // 备份图片
     if (NotionClient.getProperty(pageCtx, 'Cover')[0]) {
       for (const cover of NotionClient.getProperty(pageCtx, 'Cover')) {
@@ -142,8 +152,9 @@ class Channel {
         try {
           const imageHosting = new ImageHosting();
           await imageHosting.download(cover.file.url, currentPostSpace, `cover_${index}`);
+          logger.info(`Cover Backup Success: cover_${index}`);
         } catch (e) {
-          console.log(`BACKUP COVER ERROR: ${e}`);
+          logger.error(`Cover Backup Error: ${e.message}`);
         }
       }
     }

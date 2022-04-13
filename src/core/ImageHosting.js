@@ -2,6 +2,7 @@ const { HttpClient } = require('./HttpClient');
 const path = require('path');
 const fs = require('fs');
 const FormData = require('form-data');
+const { logger } = require('../utils/logger');
 
 /**
  * 图床
@@ -36,6 +37,8 @@ class ImageHosting {
   }
 
   async upload(file, filename) {
+    logger.info(`ImageHosting: Ready to upload`);
+
     const formData = new FormData();
     filename
       ? formData.append('smfile', file, { filename, contentType: 'multipart/form-data' })
@@ -51,12 +54,23 @@ class ImageHosting {
       data: formData,
     });
 
-    if (res.data.success) return res.data.data.url;
-    if (res.data.code === 'image_repeated') return res.data.images;
+    if (res.data.success) {
+      logger.info(`ImageHosting: Uploaded: New Image: ${JSON.stringify(res.data)}`);
+      return res.data.data.url;
+    }
+
+    if (res.data.code === 'image_repeated') {
+      logger.info(`ImageHosting: Uploaded: Existed Image: ${JSON.stringify(res.data)}`);
+      return res.data.images;
+    }
+
+    logger.info(`ImageHosting: Other Error: ${JSON.stringify(res.data)}`);
     return null;
   }
 
   async uploadExternal(url) {
+    logger.info(`ImageHosting: Ready to uploadExternal: ${url}`);
+
     const externalImageRes = await this.$http.request({
       url: url,
       method: 'GET',

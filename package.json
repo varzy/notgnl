@@ -26,7 +26,8 @@
     "koa": "^2.13.4",
     "koa-bodyparser": "^4.3.0",
     "lodash": "^4.17.21",
-    "shelljs": "^0.8.5"
+    "shelljs": "^0.8.5",
+    "winston": "^3.7.2"
   },
   "devDependencies": {
     "eslint": "^8.11.0",
