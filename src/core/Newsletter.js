@@ -260,14 +260,10 @@ class Newsletter {
       NotionClient.buildBlock('divider', {}),
       NotionClient.buildBlock(
         'paragraph',
-        { rich_text: [{ type: 'text', text: { content: `Thanks for reading.` } }] },
-        { object: 'block' }
-      ),
-      NotionClient.buildBlock(
-        'paragraph',
         {
           rich_text: [
-            { type: 'text', text: { content: `个人主页：` } },
+            { type: 'text', text: { content: `Thanks for reading.` } },
+            { type: 'text', text: { content: ` 个人主页：` } },
             { type: 'text', text: { content: `varzy.me`, link: { url: `https://varzy.me` } } },
           ],
         },

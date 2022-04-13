@@ -8,8 +8,8 @@ const Dayjs = require('../utils/day');
 const { logger } = require('../utils/logger');
 
 const program = new Command();
-const channel = new Channel('CLI');
-const newsletter = new Newsletter('CLI');
+const channel = new Channel();
+const newsletter = new Newsletter();
 
 /**
  * 设计命令行

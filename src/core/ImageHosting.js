@@ -55,12 +55,12 @@ class ImageHosting {
     });
 
     if (res.data.success) {
-      logger.info(`ImageHosting: Uploaded: New Image: ${JSON.stringify(res.data)}`);
+      logger.info(`ImageHosting: Uploaded: New Image`);
       return res.data.data.url;
     }
 
     if (res.data.code === 'image_repeated') {
-      logger.info(`ImageHosting: Uploaded: Existed Image: ${JSON.stringify(res.data)}`);
+      logger.info(`ImageHosting: Uploaded: Existed Image`);
       return res.data.images;
     }
 
