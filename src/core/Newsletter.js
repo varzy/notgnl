@@ -21,23 +21,22 @@ class Newsletter {
     const publishingPosts = await this._getPublishingPosts(startTime, endTime);
     if (!publishingPosts) return { code: 1, message: 'Nothing to build Newsletter.' };
 
-    // 根据 posts 的分类生成内容组
-    // const newsletterGroups = await this._buildNewsletterGroups(publishingPosts);
-
     // 创建新的 newsletter 页面
     const newsletterPageCtx = await this._createNewNewsletterPage(
       // newsletterGroups,
       publishingPosts
     );
 
-    // await this._insertPreface(newsletterPageCtx);
-
     // 插入目录
     await this._insertTableOfContents(newsletterPageCtx);
-
-    // 插入内容
-    await this._insertContent(newsletterPageCtx, publishingPosts);
-
+    // 插入序言
+    await this._insertPreface(newsletterPageCtx, startTime, endTime);
+    // 插入本周分享
+    await this._insertSharedContents(newsletterPageCtx, publishingPosts);
+    // 插入 One More Thing
+    await this._insertOneMoreThing(newsletterPageCtx);
+    // 插入友情链接
+    await this._insertFriendlyLinks(newsletterPageCtx);
     // 插入 copyright
     await this._insertCopyright(newsletterPageCtx);
 
@@ -144,12 +143,6 @@ class Newsletter {
         emojiFromFirstPost = post.icon.emoji;
       }
       return post.properties.Name.title.map((title) => title.plain_text).join('');
-
-      // if (pageTitleItems[category.category]) return;
-      // pageTitleItems[category.category] = {
-      //   order: index,
-      //   text: category.pages[0].properties.Name.title.map((title) => title.plain_text).join(''),
-      // };
     });
     const pageTitleContent = pageTitleItems.join('、').replaceAll('《', '').replaceAll('》', '');
 
@@ -162,7 +155,7 @@ class Newsletter {
         Name: {
           title: [
             {
-              text: { content: `#${currentNO} ${pageTitleContent}` },
+              text: { content: `#${currentNO}｜${pageTitleContent}` },
             },
           ],
         },
@@ -177,34 +170,8 @@ class Newsletter {
     });
   }
 
-  // async _buildNewsletterGroups(publishingPosts) {
-  //   const newsletterGroups = NEWSLETTER_CATEGORIES.map((category) => ({ category, pages: [] }));
-  //   newsletterGroups.push({ category: '以及这些...', pages: [] });
-  //   publishingPosts.forEach((page) => {
-  //     const group = newsletterGroups.find(
-  //       (group) => group.category === NotionClient.getProperty(page, 'Category').name
-  //     );
-  //     if (group) {
-  //       group.pages.push(page);
-  //     } else {
-  //       newsletterGroups[newsletterGroups.length - 1].pages.push(page);
-  //     }
-  //   });
-
-  //   return newsletterGroups
-  //     .filter((category) => category.pages.length)
-  //     .map((category) => {
-  //       category.pages = category.pages.sort(
-  //         (a, b) =>
-  //           +new Date(a.properties.RealPubTime.date.start) -
-  //           +new Date(b.properties.RealPubTime.date.start)
-  //       );
-  //       return category;
-  //     });
-  // }
-
   // ================================================================
-  // 为 Newsletter 插入各种 Blocks
+  // 在页面中插入不同的 Blocks
   // ================================================================
 
   async _insertBlocks(newsletterPageId, children, label) {
@@ -216,97 +183,154 @@ class Newsletter {
     }
   }
 
-  async _insertTableOfContents(newsletterPageCtx) {
-    await this.$no.appendChildren(
+  /**
+   * 插入序言
+   */
+  async _insertPreface(newsletterPageCtx, startTime, endTime) {
+    await this._inertBlocks(
       newsletterPageCtx.id,
-      [NotionClient.buildBlock('table_of_contents', { color: 'gray_background' })],
+      [
+        // 第一段
+        NotionClient.buildBlock('paragraph', {
+          rich_text: [NotionClient.buildBlock('text', { content: '见信好👋！' })],
+        }),
+        // 第二段
+        NotionClient.buildBlock('paragraph', {
+          rich_text: [
+            NotionClient.buildBlock('text', { content: '「不正集」是一档由 ' }),
+            NotionClient.buildBlock('text', { content: 'ZY', link: { url: 'https://varzy.me' } }),
+            NotionClient.buildBlock('text', {
+              content:
+                ' 维护的个人 Newsletter，聚焦且不止步于有趣的互联网内容，每周五快六常规更新，内容与 Telegram 频道 ',
+            }),
+            NotionClient.buildBlock('text', {
+              content: '贼歪说',
+              link: { url: 'https://t.me/aboutzy' },
+            }),
+            NotionClient.buildBlock('text', {
+              content: ' 基本同步。除此之外我还会不定期更新一些 Bonus 内容。',
+            }),
+          ],
+        }),
+        // 第三段
+        NotionClient.buildBlock('paragraph', {
+          rich_text: [
+            NotionClient.buildBlock('text', {
+              content: `本期是「常规更新」，收录了贼歪说从 ${startTime} 至 ${endTime} 的更新内容。`,
+            }),
+          ],
+        }),
+      ],
+      'PREFACE'
+    );
+  }
+
+  /**
+   * 为页面插入目录
+   */
+  async _insertTableOfContents(newsletterPageCtx) {
+    await this._insertBlocks(
+      newsletterPageCtx.id,
+      [
+        NotionClient.buildBlock('table_of_contents', { color: 'gray_background' }),
+        NotionClient.buildBlock('paragraph', { rich_text: [] }),
+      ],
       'TOC'
     );
   }
 
-  async _insertContent(newsletterPageCtx, publishingPosts) {
+  /**
+   * 为页面插入内容
+   */
+  async _insertSharedContents(newsletterPageCtx, publishingPosts) {
     // ======== 插入大标题 ========
-    const HEADER = [
-      NotionClient.buildBlock('divider', {}),
-      NotionClient.buildBlock(
-        'heading_1',
-        {
-          rich_text: [{ type: 'text', text: { content: `「本周分享」` } }],
-        },
-        { object: 'block' }
-      ),
-    ];
-    await this._insertBlocks(newsletterPageCtx.id, HEADER, 'CONTENT HEADER');
+    await this._insertBlocks(
+      newsletterPageCtx.id,
+      this._buildBlocksSectionTitle('本周分享'),
+      'CONTENT SECTION HEADER'
+    );
 
     // ======== 插入 Post 页面 ========
     for (const post of publishingPosts) {
       // Page Title. Block || null
       const PAGE_TITLE = this._buildBlockTitle(post);
-
       // Page Tags. Block || null
-      const PAGE_TAGS = this._buildBlockMeta(post);
-
+      const PAGE_TAGS = this._buildBlockTags(post);
       // Page Cover. Block[] || null
       const PAGE_COVER = await this._buildBlockFirstCover(post);
-
       // Page Content
       const PAGE_CONTENT = await this._buildBlockContent(post);
 
       // 组装
-      const CHILDREN = PAGE_COVER
-        ? [PAGE_TITLE, PAGE_TAGS, PAGE_COVER, ...PAGE_CONTENT]
-        : [PAGE_TITLE, PAGE_TAGS, ...PAGE_CONTENT];
+      const CHILDREN = [];
+      if (PAGE_TITLE) CHILDREN.push(PAGE_TITLE);
+      if (PAGE_TAGS) CHILDREN.push(PAGE_TAGS);
+      if (PAGE_COVER) CHILDREN.push(PAGE_COVER);
+      if (PAGE_CONTENT) CHILDREN.push(PAGE_CONTENT);
+
       await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
     }
+  }
 
-    // for (const [index, category] of newsletterGroups.entries()) {
-    //   // ======== 插入分类标题 ========
-    //   const DIVIDER = NotionClient.buildBlock('divider', {});
-    //   const CATEGORY_TITLE = NotionClient.buildBlock(
-    //     'heading_1',
-    //     {
-    //       rich_text: [{ type: 'text', text: { content: `「${category.category}」` } }],
-    //     },
-    //     { object: 'block' }
-    //   );
-    //   const categoryContent = index === 0 ? [CATEGORY_TITLE] : [DIVIDER, CATEGORY_TITLE];
+  async _insertOneMoreThing(newsletterPageCtx) {
+    await this._insertBlocks(
+      newsletterPageCtx.id,
+      this._buildBlocksSectionTitle('One More Thing'),
+      'ONE MORE THING SECTION HEADER'
+    );
+  }
 
-    //   await this._insertBlocks(newsletterPageCtx.id, categoryContent, 'CATEGORY TITLE');
-
-    //   // ======== 插入分类内容 ========
-    //   for (const page of category.pages) {
-    //     // Page Cover. Block[] || null
-    //     const PAGE_COVER = await this._buildBlockFirstCover(page);
-
-    //     // Page Title. Block || null
-    //     const PAGE_TITLE = this._buildBlockTitle(page);
-
-    //     // Page Tags. Block || null
-    //     const PAGE_TAGS = this._buildBlockMeta(page);
-
-    //     // Page Content
-    //     const PAGE_CONTENT = await this._buildBlockContent(page);
-
-    //     // 组装
-    //     const CHILDREN = PAGE_COVER
-    //       ? [PAGE_TITLE, PAGE_TAGS, PAGE_COVER, ...PAGE_CONTENT]
-    //       : [PAGE_TITLE, PAGE_TAGS, ...PAGE_CONTENT];
-    //     await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
-    //   }
-    // }
+  async _insertFriendlyLinks(newsletterPageCtx) {
+    await this._insertBlocks(
+      newsletterPageCtx.id,
+      [
+        ...this._buildBlocksSectionTitle('One More Thing'),
+        NotionClient.buildBlock('paragraph', {
+          rich_text: [
+            NotionClient.buildBlock('text', { content: '广告位免费出租中... 欢迎互换友链🔗。' }),
+          ],
+        }),
+      ],
+      'ONE MORE THING SECTION HEADER'
+    );
   }
 
   async _insertCopyright(newsletterPageCtx) {
     const children = [
+      // 分割线
       NotionClient.buildBlock('divider', {}),
+      // 第一段
       NotionClient.buildBlock(
         'paragraph',
         {
           rich_text: [
-            { type: 'text', text: { content: `Thanks for reading.` } },
-            { type: 'text', text: { content: ` 个人主页：` } },
-            { type: 'text', text: { content: `varzy.me`, link: { url: `https://varzy.me` } } },
+            NotionClient.buildBlock('text', {
+              content: '以上就是本期「不正集」的全部内容，喜欢的话可以转发或推荐给您的朋友。',
+            }),
           ],
+        },
+        { object: 'block' }
+      ),
+      // 第二段
+      NotionClient.buildBlock('paragraph', {
+        rich_text: [
+          NotionClient.buildBlock('text', { content: '订阅地址：' }),
+          NotionClient.buildBlock('text', {
+            content: 'varzy.zhubai.love',
+            link: { url: 'https://varzy.zhubai.love' },
+          }),
+          NotionClient.buildBlock('text', { content: '｜个人主页：' }),
+          NotionClient.buildBlock('text', {
+            content: 'varzy.me',
+            link: { url: 'https://varzy.me' },
+          }),
+        ],
+      }),
+      // 第三段
+      NotionClient.buildBlock(
+        'paragraph',
+        {
+          rich_text: [NotionClient.buildBlock('text', { content: 'Thanks for Reading💗' })],
         },
         { object: 'block' }
       ),
@@ -317,6 +341,19 @@ class Newsletter {
   // ================================================================
   // 构建 Newsletter 的各种 Block
   // ================================================================
+
+  _buildBlocksSectionTitle(title) {
+    return [
+      NotionClient.buildBlock('divider', {}),
+      NotionClient.buildBlock(
+        'heading_1',
+        {
+          rich_text: [{ type: 'text', text: { content: `「${title}」` } }],
+        },
+        { object: 'block' }
+      ),
+    ];
+  }
 
   // 很不幸，Notion 目前并不支持直接引用已上传到 Notion 中的图片，因此只能把封面图先下载，再上传，托管于图床
   async _buildBlockFirstCover(page) {
@@ -357,7 +394,7 @@ class Newsletter {
   }
 
   // @TODO: 添加发布时间
-  _buildBlockMeta(page) {
+  _buildBlockTags(page) {
     const category = NotionClient.getProperty(page, 'Category').name;
     const tags = NotionClient.getProperty(page, 'Tags').map((tag) => tag.name);
     const tagsContent = [category, ...tags].map((tag) => `#${tag}`).join(' ');
