@@ -246,7 +246,7 @@ class Newsletter {
     // ======== 插入大标题 ========
     await this._insertBlocks(
       newsletterPageCtx.id,
-      this._buildBlocksSectionTitle('本周分享'),
+      this._buildBlocksSectionHeader('本周分享'),
       'CONTENT SECTION HEADER'
     );
 
@@ -259,7 +259,7 @@ class Newsletter {
       // Page Cover. Block || null
       const PAGE_COVER = await this._buildBlockFirstCover(post);
       // Page Content. Block[] || null
-      const PAGE_CONTENT = await this._buildBlockContent(post);
+      const PAGE_CONTENT = await this._buildBlocksContent(post);
 
       // 组装
       let CHILDREN = [];
@@ -275,7 +275,7 @@ class Newsletter {
   async _insertOneMoreThing(newsletterPageCtx) {
     await this._insertBlocks(
       newsletterPageCtx.id,
-      this._buildBlocksSectionTitle('One More Thing'),
+      this._buildBlocksSectionHeader('One More Thing'),
       'ONE MORE THING SECTION HEADER'
     );
   }
@@ -284,14 +284,14 @@ class Newsletter {
     await this._insertBlocks(
       newsletterPageCtx.id,
       [
-        ...this._buildBlocksSectionTitle('友情链接'),
+        ...this._buildBlocksSectionHeader('友情链接'),
         NotionClient.buildBlock('paragraph', {
           rich_text: [
             NotionClient.buildBlock('text', { content: '广告位免费出租中... 欢迎互换友链🔗。' }),
           ],
         }),
       ],
-      'ONE MORE THING SECTION HEADER'
+      'FRIENDLY LINKS SECTION HEADER'
     );
   }
 
@@ -300,17 +300,13 @@ class Newsletter {
       // 分割线
       NotionClient.buildBlock('divider', {}),
       // 第一段
-      NotionClient.buildBlock(
-        'paragraph',
-        {
-          rich_text: [
-            NotionClient.buildBlock('text', {
-              content: '以上就是本期「不正集」的全部内容，喜欢的话可以转发或推荐给您的朋友。',
-            }),
-          ],
-        },
-        { object: 'block' }
-      ),
+      NotionClient.buildBlock('paragraph', {
+        rich_text: [
+          NotionClient.buildBlock('text', {
+            content: '以上就是本期「不正集」的全部内容，喜欢的话可以转发或推荐给您的朋友。',
+          }),
+        ],
+      }),
       // 第二段
       NotionClient.buildBlock('paragraph', {
         rich_text: [
@@ -327,13 +323,9 @@ class Newsletter {
         ],
       }),
       // 第三段
-      NotionClient.buildBlock(
-        'paragraph',
-        {
-          rich_text: [NotionClient.buildBlock('text', { content: 'Thanks for Reading💗' })],
-        },
-        { object: 'block' }
-      ),
+      NotionClient.buildBlock('paragraph', {
+        rich_text: [NotionClient.buildBlock('text', { content: 'Thanks for Reading💗' })],
+      }),
     ];
     await this._insertBlocks(newsletterPageCtx.id, children, 'COPYRIGHT');
   }
@@ -342,16 +334,12 @@ class Newsletter {
   // 构建 Newsletter 的各种 Block
   // ================================================================
 
-  _buildBlocksSectionTitle(title) {
+  _buildBlocksSectionHeader(title) {
     return [
       NotionClient.buildBlock('divider', {}),
-      NotionClient.buildBlock(
-        'heading_1',
-        {
-          rich_text: [{ type: 'text', text: { content: `「${title}」` } }],
-        },
-        { object: 'block' }
-      ),
+      NotionClient.buildBlock('heading_1', {
+        rich_text: [{ type: 'text', text: { content: `「${title}」` } }],
+      }),
     ];
   }
 
@@ -365,14 +353,10 @@ class Newsletter {
     await imageHosting.init();
     const hostingUrl = await imageHosting.uploadExternal(firstCover.file.url);
 
-    return NotionClient.buildBlock(
-      'image',
-      {
-        type: 'external',
-        external: { url: hostingUrl },
-      },
-      { object: 'block' }
-    );
+    return NotionClient.buildBlock('image', {
+      type: 'external',
+      external: { url: hostingUrl },
+    });
   }
 
   _buildBlockTitle(page) {
@@ -386,14 +370,9 @@ class Newsletter {
     if (page.properties.TitleLink.url) _title.text.link = { url: page.properties.TitleLink.url };
     pageTitleRichText.push(_title);
 
-    return NotionClient.buildBlock(
-      'heading_2',
-      { rich_text: pageTitleRichText },
-      { object: 'block' }
-    );
+    return NotionClient.buildBlock('heading_2', { rich_text: pageTitleRichText });
   }
 
-  // @TODO: 添加发布时间
   _buildBlockTags(page) {
     const category = NotionClient.getProperty(page, 'Category').name;
     const tags = NotionClient.getProperty(page, 'Tags').map((tag) => tag.name);
@@ -411,15 +390,14 @@ class Newsletter {
     });
   }
 
-  // @TODO: 移除空白行; 根据不同类型生成不同格式
-  async _buildBlockContent(page) {
+  // @TODO: 根据不同类型生成不同格式
+  async _buildBlocksContent(page) {
     const pageBlocks = await this.$no.getFullBlocksList(page.id);
     return (
       pageBlocks.results
         // 过滤空白区块
         .filter((block) => !(block.type === 'paragraph' && !block.paragraph.rich_text.length))
         .map((block) => ({
-          object: 'block',
           type: block.type,
           [block.type]: block[block.type],
         }))
