@@ -187,7 +187,7 @@ class Newsletter {
    * 插入序言
    */
   async _insertPreface(newsletterPageCtx, startTime, endTime) {
-    await this._inertBlocks(
+    await this._insertBlocks(
       newsletterPageCtx.id,
       [
         // 第一段
@@ -256,17 +256,17 @@ class Newsletter {
       const PAGE_TITLE = this._buildBlockTitle(post);
       // Page Tags. Block || null
       const PAGE_TAGS = this._buildBlockTags(post);
-      // Page Cover. Block[] || null
+      // Page Cover. Block || null
       const PAGE_COVER = await this._buildBlockFirstCover(post);
-      // Page Content
+      // Page Content. Block[] || null
       const PAGE_CONTENT = await this._buildBlockContent(post);
 
       // 组装
-      const CHILDREN = [];
-      if (PAGE_TITLE) CHILDREN.push(PAGE_TITLE);
-      if (PAGE_TAGS) CHILDREN.push(PAGE_TAGS);
-      if (PAGE_COVER) CHILDREN.push(PAGE_COVER);
-      if (PAGE_CONTENT) CHILDREN.push(PAGE_CONTENT);
+      let CHILDREN = [];
+      if (PAGE_TITLE) CHILDREN = [...CHILDREN, PAGE_TITLE];
+      if (PAGE_TAGS) CHILDREN = [...CHILDREN, PAGE_TAGS];
+      if (PAGE_COVER) CHILDREN = [...CHILDREN, PAGE_COVER];
+      if (PAGE_CONTENT) CHILDREN = [...CHILDREN, ...PAGE_CONTENT];
 
       await this._insertBlocks(newsletterPageCtx.id, CHILDREN, 'CONTENT');
     }
@@ -284,7 +284,7 @@ class Newsletter {
     await this._insertBlocks(
       newsletterPageCtx.id,
       [
-        ...this._buildBlocksSectionTitle('One More Thing'),
+        ...this._buildBlocksSectionTitle('友情链接'),
         NotionClient.buildBlock('paragraph', {
           rich_text: [
             NotionClient.buildBlock('text', { content: '广告位免费出租中... 欢迎互换友链🔗。' }),
@@ -388,7 +388,7 @@ class Newsletter {
 
     return NotionClient.buildBlock(
       'heading_2',
-      { rich_text: pageTitleRichText, color: page.properties.TitleLink.url ? 'blue' : 'default' },
+      { rich_text: pageTitleRichText },
       { object: 'block' }
     );
   }
