@@ -177,7 +177,7 @@ class Channel {
    * 构建一个链接
    */
   _buildLink(text, url) {
-    return `[${text}](${url})`;
+    return `[${text}](${this._escapeText(url)})`;
   }
 
   /**

@@ -82,5 +82,6 @@ run()
     logger.info(`CLI DONE!: ${JSON.stringify(res)}`);
   })
   .catch((e) => {
+    console.error(e);
     logger.error(`CLI ERROR!: ${e.message}`);
   });
