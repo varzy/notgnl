@@ -1,5 +1,4 @@
 require('dotenv').config();
-// process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
 
 const Koa = require('koa');
 const app = new Koa();

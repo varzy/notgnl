@@ -3,8 +3,8 @@ const Axios = require('axios');
 class HttpClient {
   constructor(axiosOptions, useProxy = false) {
     const option = { ...axiosOptions };
-    if (useProxy && process.env.ZYC_USE_PROXY) {
-      const { protocol, host, port } = new URL(process.env.ZYC_PROXY_ADDRESS);
+    if (useProxy && process.env.NOTGNL_USE_PROXY) {
+      const { protocol, host, port } = new URL(process.env.NOTGNL_PROXY_ADDRESS);
       option.proxy = { protocol, host, port };
     }
 

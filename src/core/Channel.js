@@ -42,9 +42,9 @@ class Channel {
       return { code: '0', message: 'NOTHING_TO_PUBLISH' };
     }
 
-    // 对发送列表进行排序
+    // 根据 PubPriority 字段对发送列表进行倒叙排序排列，越大的越靠前
     const sortedResults = pages.results.sort(
-      (a, b) => a.properties['PubOrder'].number - b.properties['PubOrder'].number
+      (a, b) => b.properties['PubPriority'].number - a.properties['PubPriority'].number
     );
 
     return await this._send(sortedResults[0], dryRun);

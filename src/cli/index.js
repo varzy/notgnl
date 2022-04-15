@@ -1,5 +1,4 @@
 require('dotenv').config();
-// process.env.ZYC_USE_PROXY && require('../utils/proxy').initProxy();
 
 const { Command } = require('commander');
 const { Channel } = require('../core/Channel');
@@ -21,7 +20,7 @@ program
   .option('-g --generate', `[Action] Generate a new Newsletter`)
   .option('-i, --page-id <PageId>', `[Param] Use PageId`)
   .option('-t, --today', '[Param] Today')
-  .option('-d, --day', '[Param] Someday')
+  .option('-d, --day <Day>', '[Param] Someday')
   .option('-s, --start-day <StartDay>', '[Param] Start Day')
   .option('-e, --end-day <EndDay>', '[Param] End Day')
   .option('--dry-run', `[Param] Do not anything`)

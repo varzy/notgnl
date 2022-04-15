@@ -101,20 +101,26 @@ class Newsletter {
       },
     });
 
-    return unNewsletterPosts.results
-      .filter((post) => {
-        const realPubTime = Day(NotionClient.getProperty(post, 'RealPubTime').start);
-        const filterStartTime = Day(startTime).startOf('day');
-        const filterEndTime = Day(endTime).endOf('day');
-        return (
-          realPubTime.isSameOrBefore(filterEndTime) && realPubTime.isSameOrAfter(filterStartTime)
-        );
-      })
-      .sort(
-        (a, b) =>
-          +new Date(a.properties.RealPubTime.date.start) -
-          +new Date(b.properties.RealPubTime.date.start)
-      );
+    return (
+      unNewsletterPosts.results
+        // 根据时间进行过滤
+        .filter((post) => {
+          const realPubTime = Day(NotionClient.getProperty(post, 'RealPubTime').start);
+          const filterStartTime = Day(startTime).startOf('day');
+          const filterEndTime = Day(endTime).endOf('day');
+          return (
+            realPubTime.isSameOrBefore(filterEndTime) && realPubTime.isSameOrAfter(filterStartTime)
+          );
+        })
+        // 根据真实发布时间进行排序
+        .sort(
+          (a, b) =>
+            +new Date(a.properties.RealPubTime.date.start) -
+            +new Date(b.properties.RealPubTime.date.start)
+        )
+        // 根据生成排序属性进行重排序
+        .sort((a, b) => b.properties.NLGenPriority.number - a.properties.NLGenPriority.number)
+    );
   }
 
   /**
