@@ -295,13 +295,11 @@ class Channel {
   }
 
   /**
-   * 转义 Notion 的有序列表，自动加 1234
+   * 转义 Notion 的无序列表
    */
   _translateBulletedList({ rich_text }) {
-    return rich_text
-      .map(this._translateRichTextSnippet.bind(this))
-      .map((text) => this._escapeText(`*`) + ' ' + text)
-      .join('');
+    const line = rich_text.map(this._translateRichTextSnippet.bind(this)).join('');
+    return this._escapeText(`* `) + line;
   }
 
   /**
