@@ -44,7 +44,7 @@ class TelegramClient {
     const res = await this.$http.request({
       url: '/sendMediaGroup',
       method: 'POST',
-      data: { chat_id: this.chatId, parse_mode: 'MarkdownV2', media: mediaPhotos },
+      data: { chat_id: this.chatId, media: mediaPhotos },
     });
 
     return res.data;

@@ -94,6 +94,7 @@ class Channel {
 
     logger.info(`Ready send to Telegram: COVERS: ${COVERS}`);
     logger.info(`Ready send to Telegram: TEXT: ${TEXT}`);
+    logger.info(`Ready send to Telegram: TEXT LENGTH: ${TEXT.length}`);
 
     // ============================================
     // 发送至 Telegram
