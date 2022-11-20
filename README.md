@@ -1,3 +1,7 @@
+**‼️ 注意：本项目已不再维护，欢迎查看重构后的新项目：[lancelot](https://github.com/varzy/lancelot) + [artoria](https://github.com/varzy/artoria)。**
+
+---
+
 # NOTGNL
 
 > NOTGNL = Notion + Telegram + Newsletter
